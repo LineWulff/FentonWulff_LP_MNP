@@ -1,4 +1,8 @@
+### Progeny and Dorothea analysis
+## Author: Thomas Fenton
+
 ######## ----- Progeny ----- #######
+# Libraries
 library('progeny')
 library('limma')
 library('tidyr')
@@ -68,8 +72,6 @@ progeny_hmap = pheatmap(t(summarized_progeny_scores_df[,]),fontsize=14,
 
 
 ######## DOROTHEA #######
-
-
 library(dorothea)
 library(bcellViper)
 library(dplyr)
@@ -79,7 +81,7 @@ library(pheatmap)
 browseVignettes("dorothea")
 
 ## At this point, the data should be split into colonic LP and ileal LP for each cluster##
-Treg <- mommac
+mommac <- mommac
 
 ################DOROTHEA#############################
 # accessing expression data from bcellViper
@@ -92,29 +94,29 @@ regulon <- dorothea_regulon_mouse %>%
   dplyr::filter(confidence %in% c("A","B"))
 
 ## We compute Viper Scores
-Treg <- run_viper(Treg, regulon,
+mommac <- run_viper(mommac, regulon,
                   options = list(method = "scale", minsize = 4,
                                  eset.filter = FALSE, cores = 1,
                                  verbose = FALSE))
 
 #scale data
-DefaultAssay(Treg)<- 'dorothea'
-Treg <- ScaleData(Treg)
+DefaultAssay(mommac)<- 'dorothea'
+mommac <- ScaleData(mommac)
 
 
 ## We transform Viper scores, scaled by seurat, into a data frame to better
 ## handling the results
-viper_scores_df <- GetAssayData(Treg, slot = "scale.data",
+viper_scores_df <- GetAssayData(mommac, slot = "scale.data",
                                 assay = "dorothea") %>%
   data.frame(check.names = F) %>%
   t()
 
 #to get original seurat clusters
-DefaultAssay(Treg)<-'integrated'
+DefaultAssay(mommac)<-'integrated'
 
 ## We create a data frame containing the cells and their clusters
-CellsClusters <- data.frame(cell = names(Seurat::Idents(Treg)),
-                            cell_type = as.character(Seurat::Idents(Treg)),
+CellsClusters <- data.frame(cell = names(Seurat::Idents(mommac)),
+                            cell_type = as.character(Seurat::Idents(mommac)),
                             check.names = F)
 
 
