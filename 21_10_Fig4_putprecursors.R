@@ -129,7 +129,7 @@ ggplot(as.data.frame(cbind(DCtraj@reductions$flat_3D@cell.embeddings, DCtraj@met
 dev.off()
 
 
-#### D) Velocity calculation and embedding on Flat 3D tSP UMAP ####
+#### E) Velocity calculation and embedding on Flat 3D tSP UMAP ####
 # before this loom files were concantenated, renamed to fit object and split into spliced (emat) and unspliced (nmat) matrices 
 nmat <- readRDS(file="/Volumes/Mucosal-immunology/WA group/Tom and Line data/cLP_SILP_merged/R6/Rdata/R1_AllCells_nmat.rds")
 emat <- readRDS(file="/Volumes/Mucosal-immunology/WA group/Tom and Line data/cLP_SILP_merged/R6/Rdata/R1_AllCells_emat.rds")
@@ -218,7 +218,7 @@ ggplot(cbind(DCtraj@meta.data,DCtraj@reductions$flat_3D@cell.embeddings), aes(x=
 dev.off()
 
 
-#### E) PCA on comitted precursors ####
+#### F) PCA on comitted precursors ####
 DEGs <- FindAllMarkers(subset(visu_obj, idents = c("19","29","36")), #c("19","29","36") c("cDC1A","cDC3","cDC2") c("36","53","35")
                        only.pos = T, #only including UPregulated DEGs per cluster
                        test.use = "wilcox", #test to use
@@ -228,106 +228,10 @@ DEGs <- FindAllMarkers(subset(visu_obj, idents = c("19","29","36")), #c("19","29
 DEGs <- DEGs[DEGs$p_val_adj<0.05,]
 dim(DEGs)
 top50 <- DEGs %>% group_by(cluster) %>% top_n(n = 50, wt = avg_logFC)
-
-
-#prec_genes <- DEGs$gene
+# top 50 genes from each cluster based on avg_logFC
 prec_genes <- top50$gene
-precursors <- subset(visu_obj, idents = c("19","29","36","53","35")) #,"19","29","36","53","35"
-precursors <- ScaleData(precursors, vars.to.regress = c("nCount_RNA", "percent.mt","G2M.Score","S.Score","cc.exp"), do.scale = TRUE) 
-precursor_mat <- t(precursors@assays$integrated@scale.data[prec_genes,])
 
-prec_pca <- prcomp(precursor_mat)
-prec_df <- as.data.frame(prec_pca$x)
-prec_pca_2 <- PCA(precursor_mat)
-# add coluring labels
-prec_df$cluster <- as.character(precursors@meta.data[rownames(prec_df),]$tSP_clus_comp_v3)
-prec_df <- cbind(prec_df, t(precursors@assays$integrated@data[c("CLEC9A","CD1C","BATF3","FCER1A","IRF8","IRF4","LTB","C1QA","CD163","CD14"),rownames(prec_df)]))
-#prec_df$branch <- NA
-#for (clus in unique(prec_df$cluster)){prec_df[prec_df$cluster==clus,]$branch <- branch[clus]}
-
-#dev.off()
-#pdf(paste(dato,project,"Elbow_RandGenes.pdf",sep="_"),height = 5,width = 5)
-plot(1:50, prec_pca_2$var[1:50]/prec_pca_2$totalvar, cex=2, ylab = "% Variance explained", xlab = "PCs")
-lines(1:50, prec_pca_2$var[1:50]/prec_pca_2$totalvar)
-#dev.off()
-
-pdf(paste(dato,"Dctraj_PCA_committed_F4F.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster)+theme_classic()+scale_color_manual(values=clus_v3_col)
-dev.off()
-#### F) PCA on uncertain comitted precursors ####
-precursors <- subset(visu_obj, idents = c("32","50","51")) 
-precursors <- ScaleData(precursors, vars.to.regress = c("nCount_RNA", "percent.mt","G2M.Score","S.Score","cc.exp"), do.scale = TRUE) 
-precursor_mat <- t(precursors@assays$integrated@scale.data[prec_genes,])
-
-prec_pca <- prcomp(precursor_mat)
-prec_df <- as.data.frame(prec_pca$x)
-prec_pca_2 <- PCA(precursor_mat)
-# add coluring labels
-prec_df$cluster <- as.character(precursors@meta.data[rownames(prec_df),]$tSP_clus_comp_v3)
-prec_df$segment <- precursors@meta.data[rownames(prec_df),]$segment
-prec_df <- cbind(prec_df, t(precursors@assays$integrated@data[c("CLEC9A","CD1C","BATF3","FCER1A","IRF8","IRF4","LTB","C1QA","CD163","CD14","CCL22","DUSP5"),rownames(prec_df)]))
-#prec_df$branch <- NA
-#for (clus in unique(prec_df$cluster)){prec_df[prec_df$cluster==clus,]$branch <- branch[clus]}
-
-#dev.off()
-#pdf(paste(dato,project,"Elbow_RandGenes.pdf",sep="_"),height = 5,width = 5)
-plot(1:50, prec_pca_2$var[1:50]/prec_pca_2$totalvar, cex=2, ylab = "% Variance explained", xlab = "PCs")
-lines(1:50, prec_pca_2$var[1:50]/prec_pca_2$totalvar)
-#dev.off()
-
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_clustercolored.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster)+theme_classic()+scale_color_manual(values=clus_v3_col)
-dev.off()
-
-#split by tissue
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_clustercolored_splitbytissue.pdf"), width=7, height=3.5)
-ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster)+theme_classic()+scale_color_manual(values=clus_v3_col)+facet_wrap(~prec_df$segment)
-dev.off()
-
-
-## DC1 genes
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CLEC9A.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CLEC9A), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_BATF3.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$BATF3), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-
-## DC2 genes
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_IRF4.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$IRF4), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CCL22.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CCL22), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_DUSP5.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$DUSP5), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-
-## DC3 genes
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_FCER1A.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$FCER1A), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CD1c.pdf"), width=3, height=3)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CD1C), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-
-
-#### combination of E) and F) #####
+# subset cells from HLA low clusters to include in PCA
 Idents(DCtraj) <- 'tSP_clus_comp_v3'
 precursors <- subset(DCtraj, idents = c("19","29","36","53","35","51","32","50")) #,"19","29","36","53","35"
 precursors <- ScaleData(precursors, vars.to.regress = c("nCount_RNA", "percent.mt","G2M.Score","S.Score","cc.exp"), do.scale = TRUE) 
@@ -338,28 +242,19 @@ prec_df <- as.data.frame(prec_pca$x)
 prec_pca_2 <- PCA(precursor_mat)
 # add coluring labels
 prec_df$cluster <- as.character(precursors@meta.data[rownames(prec_df),]$tSP_clus_comp_v3)
-prec_df <- cbind(prec_df, t(precursors@assays$integrated@data[c("CLEC9A","CD1C","BATF3","FCER1A","IRF8","IRF4","LTB","C1QA","CD163","CD14","DUSP5"),rownames(prec_df)]))
-#prec_df$branch <- NA
-#for (clus in unique(prec_df$cluster)){prec_df[prec_df$cluster==clus,]$branch <- branch[clus]}
 
-#dev.off()
-#pdf(paste(dato,project,"Elbow_RandGenes.pdf",sep="_"),height = 5,width = 5)
+# check PC variance pr PC
 plot(1:50, prec_pca_2$var[1:50]/prec_pca_2$totalvar, cex=2, ylab = "% Variance explained", xlab = "PCs")
 lines(1:50, prec_pca_2$var[1:50]/prec_pca_2$totalvar)
-#dev.off()
 
-pdf(paste(dato,"Dctraj_PCA_committed_F4F.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = T, groups = prec_df$cluster)+
-  theme_classic()+scale_color_manual(values=clus_v3_col)
-dev.off()
-
+# Plot only cells that showed commitment from F4D-E
 clus_v3_alp <- c("53"= 1,"19"= 1,"32"= 0,"36"= 1,"35"=0,"29"= 1,"50"= 0,"51"= 0,"cDC1"=0,"cDC2"=0)
 prec_df$alpha <- 0
 for (clus in unique(prec_df$cluster)) {
   prec_df[prec_df$cluster==clus,]$alpha <- clus_v3_alp[clus]
 }
 
-pdf(paste(dato,"NewEFcomb_precommColoured_w35.pdf"), width=4, height=3.5)
+pdf(paste(dato,"4F_precommColoured_w35.pdf"), width=4, height=3.5)
 ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster, alpha=0)+
   geom_point_rast(aes(colour = prec_df$cluster), alpha=prec_df$alpha)+
   theme_classic()+
@@ -374,96 +269,12 @@ for (clus in unique(prec_df$cluster)) {
 }
 clus_v3_col_2 <- c("53"="grey","19"="grey","32"="#7CAE00","36"="grey","35"="#00BFC4","29"="grey","50"="#C77CFF","51"="#CD9600")
 
-
-pdf(paste(dato,"NewEFcomb_UncommColoured_w35.pdf"), width=4, height=3.5)
+pdf(paste(dato,"4Gcomb_UncommColoured_w35.pdf"), width=4, height=3.5)
 ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster, alpha=0)+
   geom_point_rast(aes(colour = prec_df$cluster), alpha=prec_df$alpha)+
   theme_classic()+
   scale_color_manual(values=clus_v3_col_2)+
   theme(axis.ticks = element_blank(),axis.text = element_blank())
-dev.off()
-
-## WO 35
-clus_v3_alp <- c("53"= 1,"19"= 1,"32"= 0,"36"= 1,"35"=1,"29"= 1,"50"= 0,"51"= 0,"cDC1"=0,"cDC2"=0)
-prec_df$alpha <- 0
-for (clus in unique(prec_df$cluster)) {
-  prec_df[prec_df$cluster==clus,]$alpha <- clus_v3_alp[clus]
-}
-
-pdf(paste(dato,"NewEFcomb_precommColoured_v1.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster, alpha=0)+
-  geom_point_rast(aes(colour = prec_df$cluster), alpha=prec_df$alpha)+
-  theme_classic()+
-  scale_color_manual(values=clus_v3_col)+
-  theme(axis.ticks = element_blank(),axis.text = element_blank())
-dev.off()
-
-clus_v3_alp <- c("53"= 0.5,"19"= 0.5,"32"= 1,"36"= 0.5,"35"=0.5,"29"= 0.5,"50"= 1,"51"= 1)
-prec_df$alpha <- 0
-for (clus in unique(prec_df$cluster)) {
-  prec_df[prec_df$cluster==clus,]$alpha <- clus_v3_alp[clus]
-}
-clus_v3_col_2 <- c("53"="grey","19"="grey","32"="#7CAE00","36"="grey","35"="grey","29"="grey","50"="#C77CFF","51"="#CD9600")
-
-
-pdf(paste(dato,"NewEFcomb_UncommColoured_v1.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, groups = prec_df$cluster, alpha=0)+
-  geom_point_rast(aes(colour = prec_df$cluster), alpha=prec_df$alpha)+
-  theme_classic()+
-  scale_color_manual(values=clus_v3_col_2)+
-  theme(axis.ticks = element_blank(),axis.text = element_blank())
-dev.off()
-
-
-## DC1 genes
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CLEC9A.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CLEC9A), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_BATF3.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$BATF3), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-
-## DC2 genes
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_IRF4.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$IRF4), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CCL22.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CCL22), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_DUSP5.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$DUSP5), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-
-## DC3 genes
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_FCER1A.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$FCER1A), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CD1c.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CD1C), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CD163.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CD163), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
-dev.off()
-pdf(paste(dato,"Dctraj_PCA_committed_F4G_CD164.pdf"), width=4, height=3.5)
-ggbiplot(prec_pca, var.axes = F, alpha = 0)+theme_classic()+
-  geom_point(aes(colour=prec_df$CD14), size=2)+scale_colour_gradientn(colours=mycols_blue)+
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), axis.title = element_blank())
 dev.off()
 
 ### Add PC1&2 to precursors to be able to gate
@@ -472,13 +283,15 @@ precursors@reductions$prec_pca@cell.embeddings <- prec_pca$x[rownames(precursors
 colnames(precursors@reductions$prec_pca@cell.embeddings) <- c("PC_1","PC_2")
 
 DimPlot(precursors, reduction = "prec_pca",pt.size = 2)+scale_color_manual(values=clus_v3_col_2)#+scale_alpha_manual(values=clus_v3_alp)
-DC1_prec <- CellSelector(DimPlot(precursors, reduction = "prec_pca",pt.size = 2)+scale_color_manual(values=clus_v3_col_2))
-DC3_prec <- CellSelector(DimPlot(precursors, reduction = "prec_pca",pt.size = 2)+scale_color_manual(values=clus_v3_col_2))
+#DC1_prec <- CellSelector(DimPlot(precursors, reduction = "prec_pca",pt.size = 2)+scale_color_manual(values=clus_v3_col_2))
+#DC3_prec <- CellSelector(DimPlot(precursors, reduction = "prec_pca",pt.size = 2)+scale_color_manual(values=clus_v3_col_2))
 #uncomm_prec <- CellSelector(DimPlot(precursors, reduction = "prec_pca",pt.size = 2)+scale_color_manual(values=clus_v3_col_2))
 
-DC1_prec <- DC1_prec[DC1_prec %in% rownames(precursors@meta.data[precursors@meta.data$tSP_clus_comp_v3=="50" | precursors@meta.data$tSP_clus_comp_v3=="35",])]
-DC3_prec <- DC3_prec[DC3_prec %in% rownames(precursors@meta.data[precursors@meta.data$tSP_clus_comp_v3=="50",])]
+#DC1_prec <- DC1_prec[DC1_prec %in% rownames(precursors@meta.data[precursors@meta.data$tSP_clus_comp_v3=="50" | precursors@meta.data$tSP_clus_comp_v3=="35",])]
+#DC3_prec <- DC3_prec[DC3_prec %in% rownames(precursors@meta.data[precursors@meta.data$tSP_clus_comp_v3=="50",])]
 
+DC1_prec <- as.character(read.csv("DC1prec_cl5035.csv")$x)
+DC1_prec <- as.character(read.csv("DC3prec_cl50.csv")$x)
 
 unique(DCtraj@meta.data$tSP_clus_comp_v3)
 DCtraj@meta.data$tSP_clus_comp_v5 <- as.character(DCtraj@meta.data$tSP_clus_comp_v3)
