@@ -137,7 +137,24 @@ emat <- readRDS(file="/Volumes/Mucosal-immunology/WA group/Tom and Line data/cLP
 nmat_all <- nmat
 emat_all <- emat
 
+## Velo with extra precursor clusters
+clus_v3.5_col <- c("cDC1"="grey","cDC2"="grey","amb"="grey","cDC3"="grey",
+                   "53"="#F8766D","19"="#FF61CC","43"="darksalmon","30"="rosybrown","32"="#7CAE00","36"="#00BE67","33"="palegreen3","35"="#00BFC4","29"="#00A9FF","50"="#C77CFF","51"="#CD9600")
+DCtraj@meta.data$tSP_clus_comp_v3.5 <- as.character(DCtraj@meta.data$tSP_clus_comp_v3)
+DCtraj@meta.data[DCtraj@meta.data$integrated_snn_res.3 %in% c(43,30,33),]$tSP_clus_comp_v3.5 <- as.character(DCtraj@meta.data[DCtraj@meta.data$integrated_snn_res.3 %in% c(43,30,33),]$integrated_snn_res.3)
+
+# check colouring and included clusters fit
+DimPlot(DCtraj, group.by = "tSP_clus_comp_v3.5", reduction = "flat_3D", label=T, label.size=6, pt.size = 1)+scale_color_manual(values=clus_v3.5_col)+NoLegend()
+
 visu_obj <- DCtraj
+
+Idents(visu_obj) <- visu_obj@meta.data$tSP_clus_comp_v3.5
+Idents(visu_obj) <- factor(Idents(visu_obj), levels = names(clus_v3.5_col))
+cluster.label <- Idents(visu_obj)
+#specific colours from clustering
+#add for each cell w. pagoda
+cell.colors <- pagoda2:::fac2col(cluster.label,level.colors = clus_v3.5_col)
+
 #and include only cells of interest
 incl_cells <- intersect(colnames(visu_obj),colnames(emat))
 emat <- emat[,incl_cells]
@@ -148,13 +165,6 @@ nmat <- nmat[,incl_cells]
 cell.dist <- as.dist(1-armaCor(t(visu_obj@reductions$pca@cell.embeddings)))
 #tSNE/UMAP or PCA embeddings from seurat
 emb <- visu_obj@reductions$flat_3D@cell.embeddings[,c(1,2)]
-#cluster coloring
-Idents(visu_obj) <- visu_obj@meta.data$tSP_clus_comp_v3
-Idents(visu_obj) <- factor(Idents(visu_obj), levels = names(clus_v3_col))
-cluster.label <- Idents(visu_obj) #numbers now 0-5 - 6 clusters - going to change with new clustering
-
-#add for each cell w. pagoda
-cell.colors <- pagoda2:::fac2col(cluster.label,level.colors = clus_v3_col)
 
 #filtering of genes based on minimum average expression magnitude
 emat <- filter.genes.by.cluster.expression(emat,cluster.label,min.max.cluster.average = 0.2)
@@ -190,30 +200,16 @@ rvel.cd <- gene.relative.velocity.estimates(emat.int,nmat.int,
                                             cell.dist=cell.dist,fit.quantile=fit.quantile, 
                                             zero.offset = T, n.cores = 4)
 
-## Velo with extra precursor clusters
-clus_v3.5_col <- c("cDC1"="grey","cDC2"="grey","amb"="grey","cDC3"="grey",
-                   "53"="#F8766D","19"="#FF61CC","43"="darksalmon","30"="rosybrown","32"="#7CAE00","36"="#00BE67","33"="palegreen3","35"="#00BFC4","29"="#00A9FF","50"="#C77CFF","51"="#CD9600")
-DCtraj@meta.data$tSP_clus_comp_v3.5 <- as.character(DCtraj@meta.data$tSP_clus_comp_v3)
-DCtraj@meta.data[DCtraj@meta.data$integrated_snn_res.3 %in% c(43,30,33),]$tSP_clus_comp_v3.5 <- as.character(DCtraj@meta.data[DCtraj@meta.data$integrated_snn_res.3 %in% c(43,30,33),]$integrated_snn_res.3)
-
-DimPlot(DCtraj, group.by = "tSP_clus_comp_v3.5", reduction = "flat_3D", label=T, label.size=6, pt.size = 1)+scale_color_manual(values=clus_v3.5_col)+NoLegend()
-
-visu_obj <- DCtraj
-
-Idents(visu_obj) <- visu_obj@meta.data$tSP_clus_comp_v3.5
-#DC_traj_ord <- c(4,3,7,1,5,2,0,6)
-Idents(visu_obj) <- factor(Idents(visu_obj), levels = names(clus_v3.5_col))
-cluster.label <- Idents(visu_obj) #numbers now 0-5 - 6 clusters - going to change with new clustering
-#specific colours from clustering
-#add for each cell w. pagoda
-cell.colors <- pagoda2:::fac2col(cluster.label,level.colors = clus_v3.5_col)
-
+# Embed velocity estimation on existing flat 3d tSP umap embedding
 pdf(paste(dato,"DCtraj_velocytoCellInterest_PearsonEmb_tSPclus3.5_v1.pdf",sep="_"), height = 5, width = 5)
-show.velocity.on.embedding.cor(emb,rvel.cd,n=400,scale='sqrt',cell.colors=ac(cell.colors,alpha=0.70),cex=1.5,n.cores = 4,
-                               arrow.scale=2,show.grid.flow=TRUE,min.grid.cell.mass=0.1,grid.n=25,arrow.lwd=0.8,do.par=T,cell.border.alpha = 0,
+show.velocity.on.embedding.cor(emb, rvel.cd, n = 400, scale = 'sqrt', 
+                               cell.colors = ac(cell.colors, alpha = 0.70), cex = 1.5, n.cores = 4,
+                               arrow.scale = 2, show.grid.flow = TRUE, min.grid.cell.mass = 0.1,
+                               grid.n = 25, arrow.lwd = 0.8, do.par = T, cell.border.alpha = 0,
                                axes = FALSE)
 dev.off()
 
+# Without velo. for legend purposes
 pdf(paste(dato,"DCtraj_legend_clus3.5_v1.pdf",sep="_"), height = 5, width = 5)
 ggplot(cbind(DCtraj@meta.data,DCtraj@reductions$flat_3D@cell.embeddings), aes(x=UMAP_1,y=UMAP_2,colour=tSP_clus_comp_v3.5))+
   geom_point_rast()+theme_classic()+scale_color_manual(values = clus_v3.5_col)+
