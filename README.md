@@ -6,4 +6,6 @@ The supercluster of CD14+ and CD1C+ cells was again subsetted, rescaled, reclust
 
 **ProgenyDorotheaAnalysis.R** - example of how analysis with Dorothea and Progeny were run.
 
+**GOplot_cDCexample_SupFig2.R** - Example of how the radarplot for GO analysis were created based on table outputs from EnrichR. All significant GO terms were manually curated to include immunologically relevant terms in the final figures.
+
 **Fig4_putprecursors.R** - Analysis for Figure 4 and Supplementary Figure 4.
