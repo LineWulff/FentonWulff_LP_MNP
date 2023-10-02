@@ -1,8 +1,8 @@
-### Plotting for Figure 4 - putative DC precursors
-## Author: Line Wulff
-###############################################################
-#######    F4 DC traj fig updates september 2021       ########
-###############################################################
+##' Plotting for Figure 4 - putative DC precursors
+##' Author: Line Wulff
+##################################################################
+#######    Figure 4 - putative precursors - analysis      ########
+##################################################################
 rm(list=ls())
 setwd()
 
@@ -14,10 +14,11 @@ library(ggrepel)
 library(tidyverse)
 library(tidyr)
 library(Seurat)
-#library(Seurat, lib.loc = "/Library/Frameworks/R.framework/Versions/3.5/Resources/other_libs") #3.1.1
 library(velocyto.R)
 library(pagoda)
 library(ggrastr)
+library(ComplexHeatmap)
+library(colorRamp2)
 
 #### Variables ####
 ##date in format year_month_day 
@@ -372,4 +373,48 @@ for (group in names(Sign_list)){
 #### B) Velo split in SI and LI ####
 # Like E) but subsetted both embedding, nmat, and emat on ileal and colonic cells separately
 #### BM pearson correlation ####
+# OBS! Average expression was run w. Seurat version 3.5, running with version 3.6 or later versions result
+# in visible differences in correlations - Seurat updated function with no other remarks than
+# "improvement" of function
+# AML data fro Sergio et al. DOI: 10.1038/s41590-021-01059-0 , seurat object available
+# only interested in comparing to samples from healthy controls
+AML <- readRDS("/Volumes/LWulffExD/Projects/FentonWulffData/Sergio_SCdata/Healthy.rds")
+incl_pops <- c("HSCs & MPPs","Lymphomyeloid prog","Early promyelocytes","Conventional dendritic cell 1" ,
+               "Conventional dendritic cell 2","Late promyelocytes","Myelocytes","Classical Monocytes")
+AML_cDC_av <- AverageExpression(subset(AML, idents = incl_pops), return.seurat = T,assays = "RNA")
+Idents(AML_cDC_av) <- factor(Idents(AML_cDC_av), levels = incl_pops)
 
+# Reading in Seurat object with all MNPs (pDCs, mono/cDC2 supercluster, cDC1)
+# including monocyte reference to this part of analysis
+MNP <- readRDS("/Volumes/LWulffExD/Projects/FentonWulffData/R6/Rdata/R2_MNPs_MNP_LP_wCITEdsbnorm.rds")
+DimPlot(MNP, group.by = "integrated_snn_res.1", label = T)+NoLegend()
+
+## subset to DCs and monocytes cl 7
+Dendritic <- colnames(DCtraj)
+monocytes <- rownames(MNP@meta.data[MNP@meta.data$integrated_snn_res.1==7,])
+monocytes <- monocytes[!monocytes %in% Dendritic]
+
+# add DC tSP clustering and mono labels to object
+MNP <- subset(MNP, cells = c(monocytes,Dendritic))
+MNP@meta.data$tSP_clus_comp_v5 <- NA
+MNP@meta.data[Dendritic,]$tSP_clus_comp_v5 <- DCtraj@meta.data$tSP_clus_comp_v5
+MNP@meta.data[monocytes,]$tSP_clus_comp_v5  <- "CD14+ mono"
+Idents(MNP) <- 'tSP_clus_comp_v5'
+tSP_ord <- c("51","50_DC1","35_DC1","53","19","cDC1","32","36","cDC2","50_DC3","35","29","cDC3")
+MNP <- subset(MNP,idents = c(tSP_ord, "CD14+ mono"))
+Idents(MNP) <- factor(Idents(MNP), levels = c(tSP_ord, "CD14+ mono"))
+MNP_av <- AverageExpression(MNP, return.seurat = T, assays = "RNA")
+
+var_genes <-  VariableFeatures(DCtraj)[VariableFeatures(DCtraj) %in% VariableFeatures(AML)]
+LP_SerSub_corr <- as.data.frame(cor(y=as.matrix(MNP_av@assays$RNA@data)[var_genes,], x = as.matrix(AML_cDC_av@assays$RNA@data)[var_genes,], method = "pearson"))
+
+pdf(paste(dato,"F4H_SergioetalBMordered_corr_preDC.pdf",sep="_"), height = 5,width = 4)
+Heatmap(t(as.matrix(LP_SerSub_corr)), col = colorRamp2(seq(0.408,0.8,0.008),mycols),
+        column_title = "Sergio et al. data", column_title_side = "bottom",
+        cluster_rows = FALSE, cluster_columns = F,
+        column_order = incl_pops,
+        #cell_fun = function(j, i, x, y, width, height, fill) {
+        #        if(t(as.matrix(LP_SerSub_corr))[i, j] > 0.6 | t(as.matrix(LP_SerSub_corr))[i, j] < 0.3)
+        #                grid.text(sprintf("%.2f", t(as.matrix(LP_SerSub_corr))[i, j]), x, y, gp = gpar(fontsize = 6))},
+        heatmap_legend_param = list(title = "Pearson", at = c(0.25, 0.5, 0.75)))
+dev.off()
