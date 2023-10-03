@@ -252,7 +252,8 @@ DEGs <- FindAllMarkers(subset(visu_obj, idents = c("19","29","36")), #c("19","29
                        only.pos = T, #only including UPregulated DEGs per cluster
                        test.use = "wilcox", #test to use
                        min.pct = 0.25, # genes included in results should be expressed in atleast 25% of the cluster
-                       logfc.threshold = 0.25)
+                       logfc.threshold = 0.25,
+                       base = exp(1))
 
 DEGs <- DEGs[DEGs$p_val_adj<0.05,]
 dim(DEGs)
