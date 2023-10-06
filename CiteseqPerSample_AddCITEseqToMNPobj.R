@@ -66,31 +66,59 @@ normalized_matrix = DSBNormalizeProtein(cell_protein_matrix = positive_adt_matri
                                         isotype.control.name.vec = isotypes)
 
 colnames(normalized_matrix) <- str_replace(colnames(normalized_matrix),"-1","")
+colnames(normalized_matrix) <- paste("P4_SILP_",colnames(normalized_matrix), sep="")
 #save the normalized matrix to be able to upload to other objects
-saveRDS(normalized_matrix,file= "Pat4AllCells_CITEseq_dsbnorm.rds")
-
-#rename cells in norm matrix according to object you want to fit to
-load("R1_pat4_SILP.Rdata")
-rownames(pat4_SILP@meta.data)
-colnames(normalized_matrix) <- paste("SILP_",colnames(normalized_matrix), sep="")
-
-#load in the data you want to plot with
-length(colnames(pat4_SILP))
-length(colnames(pat4_SILP)[colnames(pat4_SILP) %in% colnames(normalized_matrix)])
-cells <- colnames(pat4_SILP)[colnames(pat4_SILP) %in% colnames(normalized_matrix)]
-normalized_matrix <- normalized_matrix[,cells] #the data you want to pull 
-
-pat4_SILP <- subset(pat4_SILP, cells = cells)
-
-# now add the normalized dat back to the object (the singlets defined above as "object")
-#pat4_SILP = SetAssayData(object = pat4_SILP, assay = "CITE",slot = "data", new.data = normalized_matrix)
-
-pat4_SILP[["CITE"]] <- CreateAssayObject(data = normalized_matrix)
-
-saveRDS(pat4_SILP,file="/R1_pat4_wCITE_dsbnorm.rds")
-
-Idents(pat4_SILP) <- pat4_SILP@meta.data$RNA_snn_res.0.4
-DoHeatmap(pat4_SILP, features = rownames(pat4_SILP@assays$CITE@data), assay = "CITE", slot = "data", raster = F, lines.width = 20, disp.max = 2)
-
+saveRDS(normalized_matrix,file= "Pat4SILPAllCells_CITEseq_dsbnorm.rds")
 
 #### Adding concatenated DSB norm. CITE matrix for all samples with CITE-seq to Seurat object ####
+MNP <- readRDS("/Volumes/Mucosal-immunology/WA group/Tom and Line data/cLP_SILP_merged/R6/Rdata/R1_AllCells_MNP_LP.rds")
+DSBmat_pat4SILP <- readRDS("Pat4SILPAllCells_CITEseq_dsbnorm.rds")
+DSBmat_pat4cLP <- readRDS("Pat4SILPAllCells_CITEseq_dsbnorm.rds")
+DSBmat_pat5cLP <- readRDS("Pat4SILPAllCells_CITEseq_dsbnorm.rds")
+DSBmat_pat6cLP <- readRDS("Pat4SILPAllCells_CITEseq_dsbnorm.rds")
+
+## the sample without isotypes and CD209 and CD11c, pat5 cLP
+notCITE_mat_pat5 <- rep(NA, 5*length(colnames(DSBmat_pat5cLP)))
+dim(notCITE_mat_pat5) <- c(5,length(colnames(DSBmat_pat5cLP)))
+colnames(notCITE_mat_pat5) <- colnames(DSBmat_pat5cLP)
+rownames(notCITE_mat_pat5) <- rownames(DSBmat_pat4cLP)[!rownames(DSBmat_pat4cLP) %in% rownames(DSBmat_pat5cLP)]
+DSBmat_pat5cLP <- rbind(DSBmat_pat5cLP, notCITE_mat_pat5)
+
+# co catenate the cite matrices
+DSBmat <- DSBmat_pat4SILP %>% 
+  cbind(DSBmat_pat4cLP) %>% 
+  cbind(DSBmat_pat5cLP) %>%
+  cbind(DSBmat_pat6cLP)
+saveRDS(DSBmat, file="Citeseq_DSBNormMat_AllCells.rds")
+
+Inc_cite <- rownames(MNP_LP@meta.data)
+Not_NA <- citenames[citenames %in% rownames(MNP_LP@meta.data)]
+Tobe_NA <- Inc_cite[!Inc_cite %in% Not_NA]
+
+## Samples without cite-seq data
+notCITE_mat <- rep(NA, length(rownames(DSBmat_pat4cLP))*length(Tobe_NA))
+dim(notCITE_mat) <- c(length(rownames(normalized_matrix)),length(Tobe_NA))
+colnames(notCITE_mat) <- Tobe_NA
+rownames(notCITE_mat) <- rownames(DSBmat_pat4cLP)
+
+## Bind both citeseq and NA data together and choose only cells existing in MNP_LP object
+DSBmat_MNP <- cbind(DSBmat,notCITE_mat)
+dim(DSBmat_MNP) #42506 cells
+saveRDS(DSBmat_MNP, file="Citeseq_DSBNormMat_AllCellsInclNA.rds")
+# subset to only include cells from MNP object
+DSBmat_MNP <- DSBmat_MNP[,Inc_cite]
+#check that there are the same number of cells in the objects
+dim(DSBmat_MNP)
+MNP_LP
+
+## create CITE assay and add data
+MNP_LP[["CITE"]] <- CreateAssayObject(data = DSBmat_MNP)
+MNP_LP <- ScaleData(MNP_LP, assay = "CITE")
+
+# add metadata to distinguish cells with CITE data and another layer for cells with the additional ABs added (CD209, CD11c, + isotype)
+MNP_LP@meta.data$cite <- "NO"
+MNP_LP@meta.data[Not_NA,]$cite <- "YES"
+MNP_LP@meta.data$cite2 <- "NO"
+MNP_LP@meta.data[Not_NA[!Not_NA %in% colnames(DSBmat_pat5cLP)],]$cite2 <- "YES"
+
+
