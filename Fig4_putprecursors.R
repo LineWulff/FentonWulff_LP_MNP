@@ -29,8 +29,10 @@ myColorRamp <- function(colors, values) {
   rgb(x[,1], x[,2], x[,3], maxColorValue = 255)
 }
 mycols <- rev(c('#a50026','#d73027','#f46d43','#fdae61','#fee090','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695'))
+mycols<- myColorRamp(mycols, seq(1:50))
 pseud_col <- c('magenta','darkorange','gold','black')
 pseud_col <- myColorRamp(pseud_col,seq(1:50))
+
 
 #### Read in necessary data ####
 # reclustered DC object, with tSpace PCs and high resolution clustering
@@ -401,7 +403,7 @@ MNP@meta.data$tSP_clus_comp_v5 <- NA
 MNP@meta.data[Dendritic,]$tSP_clus_comp_v5 <- DCtraj@meta.data$tSP_clus_comp_v5
 MNP@meta.data[monocytes,]$tSP_clus_comp_v5  <- "CD14+ mono"
 Idents(MNP) <- 'tSP_clus_comp_v5'
-tSP_ord <- c("51","50_DC1","35_DC1","53","19","cDC1","32","36","cDC2","50_DC3","35","29","cDC3")
+tSP_ord <- c("51","50_DC1","35_DC1","53","19","cDC1",  "50_DC3","35","29","cDC3",  "32","36","cDC2",  "amb")
 MNP <- subset(MNP,idents = c(tSP_ord, "CD14+ mono"))
 Idents(MNP) <- factor(Idents(MNP), levels = c(tSP_ord, "CD14+ mono"))
 MNP_av <- AverageExpression(MNP, return.seurat = T, assays = "RNA")
