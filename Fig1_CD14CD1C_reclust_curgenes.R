@@ -1,5 +1,3 @@
-setwd("/Volumes/Mucosal-Immunology/WA group/Tom and Line data/cLP_SILP_merged/R6/DimReductions")
-
 ###### Libraries ######
 library(gplots)
 library(ggplot2)
