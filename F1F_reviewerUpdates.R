@@ -56,7 +56,7 @@ bloodDC2 <- as.character(segura_sign$blood.cDC2)[as.character(segura_sign$blood.
 invitroMoMac <- as.character(segura_sign$in.vitro.mo.Mac)[as.character(segura_sign$in.vitro.mo.Mac)!=""]
 tissueDC2 <- as.character(segura_sign$tissue.cDC2)[as.character(segura_sign$tissue.cDC2)!=""]
 
-segura_sign <- c(bloodCD14, bloodDC2, invitroMoMac)#, tissueDC2)
+segura_sign <- c(bloodCD14, bloodDC2, invitroMoMac, tissueDC2)
 segura_sign[!segura_sign %in% rownames(MNP@assays$integrated@data)]
 segura_sign <- unique(segura_sign[segura_sign %in% rownames(MNP@assays$integrated@data)])
 
@@ -86,4 +86,12 @@ MNP_av@meta.data
 hc <- hclust(dist(t(MNP_av@assays$integrated@scale.data)))
 p <- ggdendrogram(hc, rotate = FALSE, size = 2)
 
+pdf(paste(dato,"Dendrogram_Pseudobulk_res2.8_MulderGenes.pdf",sep = "_"), height = 5, width = 7)
+p
+dev.off()
+
 ggplotly(p)
+
+Idents(MNP) <- factor(MNP@meta.data$res2.8_ord, levels = seq(1,39))
+VlnPlot(subset(MNP, idents = c("1","4","5","6","7","36","37","38","39")), features = c("CD1C","FCER1A","CD14","C5AR1","C1QA"), pt.size = 0, ncol=2)
+
