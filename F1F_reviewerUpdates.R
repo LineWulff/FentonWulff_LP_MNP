@@ -95,3 +95,18 @@ ggplotly(p)
 Idents(MNP) <- factor(MNP@meta.data$res2.8_ord, levels = seq(1,39))
 VlnPlot(subset(MNP, idents = c("1","4","5","6","7","36","37","38","39")), features = c("CD1C","FCER1A","CD14","C5AR1","C1QA"), pt.size = 0, ncol=2)
 
+#### Mulder et al correlation ####
+obj2 <- readRDS("/Users/linewulff/Documents/work/projects/FentonWulff_LP_MNP/Lit_data/2021_MNP_Verse.RDS")
+Idents(obj2) <- "Clusters"
+DefaultAssay(obj2) <- "integrated"
+DimPlot(obj2, label = T)
+
+MNPcor <- cluster_corr(MNP, "res2.8_ord", "integrated",MNPverse,"Clusters","integrated")
+
+png(paste(dato,project,))
+heatmap.2(as.matrix(corr_mat), scale = "none", col =  bluered(150), trace="none", density ="none",
+          dendrogram = "column",
+          margins = c(8,5))
+dev.off()
+
+
