@@ -174,6 +174,12 @@ VlnPlot(Elm, #subset(Elm_orig, cells = rownames(Elm_orig@meta.data[Elm_orig@meta
         ncol = 1,
         pt.size = 0)+NoLegend()
 
+## MPO progenitor genes
+MPOs <- gconvert(c("MPO","AZU1","ELANE"),organism="hsapiens",target="ENSG",filter_na = F)$target
+FeaturePlot(subset(Elm, cells = rownames(Elm@meta.data[Elm@meta.data$Diagnosis=="Healthy adult",])), features = Bcell[4])+
+  scale_colour_gradientn(colours=mycols)
+
+
 Elm_orig <- Elm
 
 Elm <- cbind(Elm_orig@meta.data, Elm_orig@reductions$umap@cell.embeddings)
@@ -232,3 +238,70 @@ ggplot(Elm[Elm$Age_group=="Adult",], aes(x = UMAP_1, y = UMAP_2, colour = cDC2su
   geom_point_rast()+
   scale_color_gradientn(colours = mycols, name = "cDC2sup")+
   theme_classic()
+
+#### #####
+Elm <- readRDS("/Users/linewulff/Documents/work/projects/FentonWulff_LP_MNP/Lit_data/ElmentaiteNature2021.rds")
+# Elm <- subset(Elm, cells = rownames(Elm@meta.data[Elm@meta.data$Diagnosis=="Healthy adult",]))
+head(Elm@meta.data)
+DimPlot(Elm, group.by = "category", label = T)+NoLegend()
+
+Bcell <- gconvert(c("CD19","CD79A","CD79B","IGHA1"),organism="hsapiens",target="ENSG",filter_na = F)$target
+FeaturePlot(subset(Elm, cells = rownames(Elm@meta.data[Elm@meta.data$Diagnosis=="Healthy adult",])), features = Bcell[4])+
+  scale_colour_gradientn(colours=mycols)
+DimPlot(subset(Elm, cells = rownames(Elm@meta.data[Elm@meta.data$Diagnosis=="Healthy adult",])), 
+        group.by = "category", label = T)+NoLegend()
+
+
+
+for (clus in unique(top50$cluster)){
+  print(clus)
+  clus_top50 <- top50[top50$cluster==clus,]$ENSG
+  if (length(clus_top50)>10){
+    nbin = length(clus_top50)} 
+  else {nbin = 10}
+  print(length(clus_top50))
+  Elm <- AddModuleScore(Elm, features = list(clus_top50), name = clus, nbin = nbin)
+}
+
+HLAs <- rownames(MNP@assays$RNA@data)[startsWith(rownames(MNP@assays$RNA@data), "HLA")]
+HLAs <- gconvert(HLAs,organism="hsapiens",target="ENSG",filter_na = F)$target
+Elm <- AddModuleScore(Elm, features = list(HLAs), name = "HLAs", nbin = nbin)
+
+spec_genes <- c("CD1C","CD207","PLAC8","PKIB","PPA1","SLC38A1","FCER1A","CD1E","LSP1","LTB")
+spec_genes <- gconvert(spec_genes,organism="hsapiens",target="ENSG",filter_na = F)$target
+Elm <- AddModuleScore(Elm, features = list(spec_genes), name = "cDC2sup", nbin = 10)
+
+spec_sub <- c("ILC3","Mast cell","NK T cell","CLC+ Mast cell","ILC2","CLP","MPO+ mono-neutrophil")     
+Idents(Elm) <- 'author_cell_type'
+Elm <- subset(Elm, idents = spec_sub)
+
+for (clus in colnames(Elm@meta.data)[35:55]){
+  Vlnplot <- VlnPlot(subset(Elm, cells = rownames(Elm@meta.data[Elm@meta.data$Diagnosis=="Healthy adult",])), 
+                     group.by = "author_cell_type", features = clus, 
+                     pt.size = 0)+NoLegend()
+  if (str_detect(clus,'/')){clus <- str_replace(clus,"/",".")}
+  pdf(paste(dato,"Vln_ReclustPosCont_Elmentaiteetal_HEALTHYADULT_DEGsbasedModulescores_",clus,".pdf",sep = ""),height = 5, width = 5)
+  print(Vlnplot)
+  dev.off()
+}
+
+Elm <- cbind(Elm@meta.data, Elm@reductions$umap@cell.embeddings)
+colnames(Elm)[35:55] <- str_sub(colnames(Elm)[35:55], start = 1, end = -2)
+colnames(Elm)[35:55] <- str_replace(colnames(Elm)[35:55], " ","")
+colnames(Elm)[35:55] <- str_replace(colnames(Elm)[35:55], "/","")
+
+ggplot(Elm[Elm$Diagnosis=="Healthy adult",], aes(x=UMAP_1, y=UMAP_2))+
+  geom_point_rast(colour="lightgrey")+
+  geom_point_rast(data=Elm[Elm$Diagnosis=="Healthy adult" & Elm$author_cell_type=="Mast cell",], 
+                  aes(x=UMAP_1, y=UMAP_2), colour="red")+
+  theme_classic()
+
+
+#### Finalizing the gene sets ####
+sign_list <- list()
+for (clus in unique(top50$cluster)){
+  sign_list[[clus]] <- top50[top50$cluster==clus,]$gene
+}
+sign_list[["cDC2"]] <- c("CD1C","CD207","PLAC8","PKIB","PPA1","SLC38A1","FCER1A","CD1E","LSP1","LTB")
+sign_list <- vectorlist(sign_list)
+write.csv(sign_list,"2312_FentonWulff_MNPsignatures.csv")
